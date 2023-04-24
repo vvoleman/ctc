@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MULTIPLIER = 0.1
+	MULTIPLIER = 1
 )
 
 const (
@@ -20,9 +20,15 @@ const (
 	ELECTRIC = "electric"
 )
 
+type VehicleFuel struct {
+	name       string
+	lowerBound time.Time
+	upperBound time.Time
+}
+
 type Vehicle struct {
 	ID       int
-	fuel     string
+	fuel     VehicleFuel
 	joinedAt time.Time
 	leftAt   time.Time
 }
@@ -46,14 +52,17 @@ type WaitQueue struct {
 }
 
 func (queue *WaitQueue) getWaitTime() float64 {
-	r := queue.Min + rand.Float64()*(queue.Max-queue.Min)
+	r := queue.Min + rand.Float64()*(queue.Max-queue.Min)*MULTIPLIER
 	return math.Round(r*100) / 100
 }
 
-func (queue *WaitQueue) join(stats chan Vehicle, c *sync.Cond, v Vehicle) {
+func (queue *WaitQueue) join(stats chan Vehicle, wg *sync.WaitGroup, c *sync.Cond, v Vehicle) {
 	defer func() {
 		stats <- v
+		wg.Done()
 	}()
+
+	fmt.Printf("Vehicle %d arrives\n", v.ID)
 
 	waiting := atomic.LoadInt32(&queue.waiting)
 	fmt.Printf("Waiting: %d\n", waiting)
@@ -65,41 +74,54 @@ func (queue *WaitQueue) join(stats chan Vehicle, c *sync.Cond, v Vehicle) {
 	v.joinedAt = time.Now()
 	fmt.Printf("Vehicle %d joins queue\n", v.ID)
 
-	c.L.Lock()
 	atomic.AddInt32(&queue.waiting, 1)
+	c.L.Lock()
 	defer func() {
 		atomic.AddInt32(&queue.waiting, -1)
 		v.leftAt = time.Now()
 		fmt.Printf("Vehicle %d finished in %fs\n", v.ID, v.getDuration().Seconds())
 	}()
 
-	for atomic.LoadInt32(&queue.waiting) > 1 {
+	for atomic.LoadInt32(&queue.waiting) != 0 {
 		c.Wait()
 	}
 
-	time.Sleep(time.Duration(queue.getWaitTime()*MULTIPLIER) * time.Second)
-
+	dur := time.Duration(queue.getWaitTime()) * time.Second
+	fmt.Printf("Vehicle %d starts pumping for %fs\n", v.ID, dur.Seconds())
+	time.Sleep(dur)
 	c.L.Unlock()
 }
 
-func getVehicle(id int, fuel string) Vehicle {
+func getVehicle(id int, fuel) Vehicle {
 	return Vehicle{ID: id, fuel: fuel}
 }
 
 func main() {
-	gas := WaitQueue{Min: 1, Max: 5, QueueSize: 5}
+	gas := WaitQueue{Min: 5, Max: 15, QueueSize: 5}
 	c := sync.NewCond(&gas.m)
-	stats := make(chan Vehicle)
 
-	for i := 0; i < 100; i++ {
+	pumpsWg := sync.WaitGroup{}
+	limit := 10
+	stats := make(chan Vehicle, limit)
+	pumpsWg.Add(limit)
+	for i := 0; i < limit; i++ {
 		r := rand.Float64() * MULTIPLIER
-		fmt.Printf("Vehicle %d arriving at pump\n", i)
-		go gas.join(stats, c, getVehicle(i, GAS))
+		go gas.join(stats, &pumpsWg, c, getVehicle(i, GAS))
 		time.Sleep(time.Duration(r) * time.Second)
 	}
 
-	for {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for el := range stats {
+			fmt.Println(fmt.Sprintf("Vehicle %v: %v", el.ID, el.leftAt.Sub(el.joinedAt).Seconds()))
+		}
+	}()
 
-	}
+	pumpsWg.Wait()
+	close(stats)
+
+	fmt.Println("done")
 
 }
