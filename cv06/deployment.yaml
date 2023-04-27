@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cv06
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cv06
+  template:
+    metadata:
+      labels:
+        app: cv06
+    spec:
+      containers:
+        - name: cv06
+          image: vvoleman/go-http-server
+          ports:
+            - containerPort: 8080
