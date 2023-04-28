@@ -1,13 +1,13 @@
 package constants
 
 // TotalNumberOfVehicles How many vehicles will be created
-const TotalNumberOfVehicles = 1000
+const TotalNumberOfVehicles = 500
 
 const (
-	GasChance      = 0.4
-	DieselChance   = 0.1
-	LpgChance      = 0.1
-	ElectricChance = 0.4
+	GasChance      = 0.35
+	DieselChance   = 0.35
+	LpgChance      = 0.2
+	ElectricChance = 0.1
 )
 
 const (
@@ -36,8 +36,8 @@ const (
 )
 
 const (
-	GasPumpQueueSize      = 3
-	DieselPumpQueueSize   = 3
-	LpgPumpQueueSize      = 3
+	GasPumpQueueSize      = 1
+	DieselPumpQueueSize   = 1
+	LpgPumpQueueSize      = 1
 	ElectricPumpQueueSize = 1
 )

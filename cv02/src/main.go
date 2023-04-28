@@ -5,6 +5,7 @@ import (
 	"simulator/src/constants"
 	"simulator/src/station"
 	"simulator/src/statistics"
+	"simulator/src/utils"
 	"simulator/src/vehicle"
 	"time"
 )
@@ -19,7 +20,9 @@ func main() {
 	gs.Start(vehicles)
 
 	endTime := time.Now()
-	fmt.Printf("===== Simulation finished in %s =====\n", endTime.Sub(startTime))
+	total_time := endTime.Sub(startTime)
+	dur := time.Duration(utils.DurationToVirtualSeconds(total_time) * float64(time.Second))
+	fmt.Printf("===== Simulation finished in %s =====\n", dur)
 
 	statistics.Run(vehicles)
 }

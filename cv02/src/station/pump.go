@@ -23,37 +23,28 @@ func (p *Pump) CanJoin() bool {
 }
 
 func (p *Pump) Join(v *vehicle.Vehicle) bool {
-	for {
-		p.m.Lock()
+	if !p.CanJoin() {
+		return false
+	}
 
-		if !p.CanJoin() {
-			p.m.Unlock()
-			return false
-		}
-
-		select {
-		case p.Queue <- v:
-			v.QueuedAt = time.Now()
-			p.m.Unlock()
-			return true
-		default:
-			p.m.Unlock()
-			return false
-		}
+	select {
+	case p.Queue <- v:
+		v.QueuedAt = time.Now()
+		return true
+	default:
+		return false
 	}
 }
 
 func (p *Pump) Start(crm *CashRegisterManager) {
 	for v := range p.Queue {
-		go func(v *vehicle.Vehicle) {
-			v.StartFuelAt = time.Now()
-			fmt.Printf("Vehicle %d started fueling %s\n", v.ID, p.Fuel)
-			v.StartRefueling()
-			v.EndFuelAt = time.Now()
-			diff := v.EndFuelAt.Sub(v.StartFuelAt)
-			fmt.Printf("Vehicle %d ended fueling after (%fs)\n", v.ID, utils.DurationToVirtualSeconds(diff))
-			crm.MoveToRegister(v)
-		}(v)
+		v.StartFuelAt = time.Now()
+		fmt.Printf("Vehicle %d started fueling %s\n", v.ID, p.Fuel)
+		v.StartRefueling()
+		v.EndFuelAt = time.Now()
+		diff := v.EndFuelAt.Sub(v.StartFuelAt)
+		fmt.Printf("Vehicle %d ended fueling after (%fs)\n", v.ID, utils.DurationToVirtualSeconds(diff))
+		crm.MoveToRegister(v)
 	}
 }
 
@@ -69,31 +60,34 @@ func InitPumps() map[constants.FuelName][]*Pump {
 			Queue:     make(chan *vehicle.Vehicle, constants.GasPumpQueueSize),
 		})
 	}
+	start := constants.GasPumpCount
 
 	// Diesel
 	for i := 0; i < constants.DieselPumpCount; i++ {
 		pumps[constants.Diesel] = append(pumps[constants.Diesel], &Pump{
-			ID:        i,
+			ID:        start + i,
 			QueueSize: constants.DieselPumpQueueSize,
 			Fuel:      constants.Diesel,
 			Queue:     make(chan *vehicle.Vehicle, constants.DieselPumpQueueSize),
 		})
 	}
+	start += constants.DieselPumpCount
 
 	// LPG
 	for i := 0; i < constants.LpgPumpCount; i++ {
 		pumps[constants.LPG] = append(pumps[constants.LPG], &Pump{
-			ID:        i,
+			ID:        start + i,
 			QueueSize: constants.LpgPumpQueueSize,
 			Fuel:      constants.LPG,
 			Queue:     make(chan *vehicle.Vehicle, constants.LpgPumpQueueSize),
 		})
 	}
+	start += constants.LpgPumpCount
 
 	// Electric
 	for i := 0; i < constants.ElectricPumpCount; i++ {
 		pumps[constants.Electric] = append(pumps[constants.Electric], &Pump{
-			ID:        i,
+			ID:        start + i,
 			QueueSize: constants.ElectricPumpQueueSize,
 			Fuel:      constants.Electric,
 			Queue:     make(chan *vehicle.Vehicle, constants.ElectricPumpQueueSize),

@@ -12,8 +12,7 @@ func GetRandomDuration(lowerBound, upperBound float64) time.Duration {
 
 	delta := upperBound - lowerBound
 	r := lowerBound + rand.Float64()*(delta)
-	duration := time.Duration(r) * time.Second
-	return duration
+	return time.Duration(r * float64(time.Second))
 }
 
 func DurationToVirtualSeconds(d time.Duration) float64 {

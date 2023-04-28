@@ -25,6 +25,12 @@ func (crm *CashRegisterManager) MoveToRegister(v *vehicle.Vehicle) {
 	shortestQueue.JoinQueue(v)
 }
 
+func (crm *CashRegisterManager) Close() {
+	for _, cr := range crm.CashRegisters {
+		close(cr.Queue)
+	}
+}
+
 func (crm *CashRegisterManager) StartRegisters() {
 	for _, cr := range crm.CashRegisters {
 		go cr.Start()
@@ -33,7 +39,6 @@ func (crm *CashRegisterManager) StartRegisters() {
 
 type CashRegister struct {
 	ID         int
-	m          sync.Mutex
 	Queue      chan *vehicle.Vehicle
 	wg         *sync.WaitGroup
 	lowerBound float64
@@ -41,9 +46,6 @@ type CashRegister struct {
 }
 
 func (cr *CashRegister) JoinQueue(v *vehicle.Vehicle) {
-	cr.m.Lock()
-	defer cr.m.Unlock()
-
 	v.RegisterJoinedAt = time.Now()
 
 	cr.Queue <- v

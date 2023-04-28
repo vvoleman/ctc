@@ -31,7 +31,7 @@ func Run(vehicles []*vehicle.Vehicle) {
 
 	for fuelType, times := range fuelTypeTimes {
 		avg := getAverage(times)
-		fmt.Printf("Average time for %s is %fs\n", fuelType, avg.Seconds())
+		fmt.Printf("Average time for %s is %fs\n", fuelType, avg.Seconds()/constants.SecondMultiplier)
 	}
 	if len(fuelTypeTimes) > 0 {
 		println("..........................................")

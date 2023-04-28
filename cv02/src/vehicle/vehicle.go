@@ -29,7 +29,8 @@ func (f *Fuel) getDuration() time.Duration {
 }
 
 func (v *Vehicle) StartRefueling() {
-	time.Sleep(v.Fuel.getDuration())
+	dur := v.Fuel.getDuration()
+	time.Sleep(dur)
 }
 
 func InitVehicles(count int) []*Vehicle {

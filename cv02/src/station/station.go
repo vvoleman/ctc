@@ -23,9 +23,16 @@ func (s *Station) startPumps() {
 	}
 }
 
+func (s *Station) Close() {
+	for _, pumps := range s.Pumps {
+		for _, pump := range pumps {
+			close(pump.Queue)
+		}
+	}
+}
+
 func (s *Station) startVehicles(vehicles []*vehicle.Vehicle) {
 	for _, v := range vehicles {
-		s.wg.Add(1)
 		go s.Join(v)
 		waitDuration := utils.GetRandomDuration(constants.ArrivalLowerBoundTime, constants.ArrivalUpperBoundTime)
 		time.Sleep(waitDuration)
@@ -33,9 +40,13 @@ func (s *Station) startVehicles(vehicles []*vehicle.Vehicle) {
 }
 
 func (s *Station) Start(vehicles []*vehicle.Vehicle) {
+	s.wg.Add(len(vehicles))
+	// Launches the cash registers and pumps goroutines
 	go s.CashRegisterManager.StartRegisters()
 	go s.startPumps()
-	s.startVehicles(vehicles)
+
+	// Starts joining vehicles
+	go s.startVehicles(vehicles)
 	s.wg.Wait()
 }
 
@@ -49,8 +60,7 @@ func (s *Station) Join(v *vehicle.Vehicle) {
 	}
 
 	for _, pump := range pumps {
-		if pump.CanJoin() {
-			pump.Join(v)
+		if pump.CanJoin() && pump.Join(v) {
 			return
 		}
 	}
@@ -62,11 +72,11 @@ func (s *Station) Join(v *vehicle.Vehicle) {
 func InitStation() *Station {
 	pumps := InitPumps()
 
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
 	registers := []*CashRegister{
-		{ID: 1, lowerBound: constants.RegisterLowerBoundTime, upperBound: constants.RegisterLowerBoundTime, wg: &wg, Queue: make(chan *vehicle.Vehicle)},
-		{ID: 2, lowerBound: constants.RegisterLowerBoundTime, upperBound: constants.RegisterLowerBoundTime, wg: &wg, Queue: make(chan *vehicle.Vehicle)},
+		{ID: 1, lowerBound: constants.RegisterLowerBoundTime, upperBound: constants.RegisterUpperBoundTime, wg: wg, Queue: make(chan *vehicle.Vehicle)},
+		{ID: 2, lowerBound: constants.RegisterLowerBoundTime, upperBound: constants.RegisterUpperBoundTime, wg: wg, Queue: make(chan *vehicle.Vehicle)},
 	}
 
 	crm := CashRegisterManager{
@@ -76,6 +86,6 @@ func InitStation() *Station {
 	return &Station{
 		Pumps:               pumps,
 		CashRegisterManager: &crm,
-		wg:                  &wg,
+		wg:                  wg,
 	}
 }
